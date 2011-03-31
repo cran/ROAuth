@@ -81,7 +81,7 @@ setRefClass("OAuth",
                   TRUE
               },
               
-              OAuthRequest = function(URL, method="GET") {
+              OAuthRequest = function(URL, method="GET", customHeader=NULL) {
                 ' If the OAuth handshake has been completed, will
                 submit a URL request with an OAuth signature, returning
                 any response from the server
@@ -95,22 +95,24 @@ setRefClass("OAuth",
                                    stop("method must be POST or GET"))
 
                 httpFunc(URLencode(URL), consumerKey, consumerSecret,
-                         oauthKey, oauthSecret)
+                         oauthKey, oauthSecret, customHeader)
               }
               )
             )
 
 
 oauthPOST <- function(url, consumerKey, consumerSecret,
-                          oauthKey, oauthSecret) {
+                      oauthKey, oauthSecret,
+                      customHeader=NULL) {
   .Call("ROAuth_POST", url, consumerKey, consumerSecret,
-        oauthKey, oauthSecret, PACKAGE="ROAuth")
+        oauthKey, oauthSecret, customHeader, PACKAGE="ROAuth")
 }
 
 oauthGET <- function(url, consumerKey, consumerSecret,
-                          oauthKey, oauthSecret) {
+                     oauthKey, oauthSecret,
+                     customHeader=NULL) {
   .Call("ROAuth_GET", url, consumerKey, consumerSecret,
-        oauthKey, oauthSecret, PACKAGE="ROAuth")
+        oauthKey, oauthSecret, customHeader, PACKAGE="ROAuth")
 }
 
 
