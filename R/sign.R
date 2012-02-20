@@ -42,7 +42,10 @@ signRequest  <- function(url, params, consumerKey, consumerSecret,
 
   sig <- signString(odat, okey, signMethod)
 
-  params["oauth_signature"] <- sig  # curlPercentEncode(sig)
+  if (httpMethod == "POST") {
+    sig <- curlPercentEncode(sig)
+  }
+  params["oauth_signature"] <- sig
   params[grepl("^oauth_", names(params))]
 }
 

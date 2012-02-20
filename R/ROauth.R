@@ -133,7 +133,7 @@ oauthPOST <- function(url, consumerKey, consumerSecret,
   ## post ,specify the method
   ## We should be able to use postForm() but we have to work out the issues
   ## with escaping, etc. to match the signature mechanism.
-  if(TRUE) {   
+  if (length(params) == 0) {
     reader <- dynCurlReader(curl, baseURL = url, verbose = FALSE)
     fields <- paste(names(auth), sapply(auth, curlPercentEncode),
                     sep = "=", collapse = "&")
