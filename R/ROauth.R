@@ -97,6 +97,19 @@ setRefClass("OAuth",
                                    GET = oauthGET,
                                    stop("method must be POST or GET"))
 
+                ## RCurl converts `\\` to `\` if the content includes strings like `\u0`
+                ## and for example, response JSON is broken as a result,
+                ## so change RCurl:::mapUnicodeEscapes temporarily to avoid it
+                ## cf. https://github.com/omegahat/RCurl/issues/1
+                ##rcurlEnv <- getNamespace("RCurl")
+                ##mapUnicodeEscapes <- get("mapUnicodeEscapes", rcurlEnv)
+                ##unlockBinding("mapUnicodeEscapes", rcurlEnv)
+                ##assign("mapUnicodeEscapes", function(str) str, rcurlEnv)
+                ##on.exit({
+                ##  assign("mapUnicodeEscapes", mapUnicodeEscapes, rcurlEnv)
+                ##  lockBinding("mapUnicodeEscapes", rcurlEnv)
+                ##}, add = TRUE)
+
                 httpFunc(URLencode(URL), params=params, consumerKey=.self$consumerKey,
                          consumerSecret=.self$consumerSecret,
                          oauthKey=.self$oauthKey, oauthSecret=.self$oauthSecret,
@@ -127,24 +140,14 @@ oauthPOST <- function(url, consumerKey, consumerSecret,
   if(is.null(curl))
     curl <- getCurlHandle()
   
-  auth <- signRequest(url, params, consumerKey, consumerSecret,
+  params <- signRequest(url, params, consumerKey, consumerSecret,
                       oauthKey=oauthKey, oauthSecret=oauthSecret,
                       httpMethod="POST", signMethod=signMethod,
                       handshakeComplete=handshakeComplete)
   opts <- list(...)
   
   ## post ,specify the method
-  ## We should be able to use postForm() but we have to work out the issues
-  ## with escaping, etc. to match the signature mechanism.
-  if (length(params) == 0) {
-    reader <- dynCurlReader(curl, baseURL = url, verbose = FALSE)
-    fields <- paste(names(auth), sapply(auth, curlPercentEncode),
-                    sep = "=", collapse = "&")
-    curlPerform(curl = curl, URL = url, postfields = fields,
-                writefunction = reader$update, ...)
-    reader$value()
-  } else
-  postForm(url, .params = c(params, lapply(auth, I)), curl = curl,
+  postForm(url, .params = params, curl = curl,
            .opts = opts, style = "POST")
 }
 
@@ -158,10 +161,9 @@ oauthGET <- function(url, consumerKey, consumerSecret,
   if(is.null(curl))
     curl <- getCurlHandle()
    
-   auth <- signRequest(url, params, consumerKey, consumerSecret,
+   params <- signRequest(url, params, consumerKey, consumerSecret,
                        oauthKey=oauthKey, oauthSecret=oauthSecret,
                        httpMethod="GET", signMethod=signMethod)
 
-   params <- c(params, as.list(auth))
    getForm(url, .params = params, curl = curl, .opts = c(httpget = TRUE,  list(...)))
 }

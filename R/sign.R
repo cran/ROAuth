@@ -2,13 +2,13 @@ signRequest  <- function(url, params, consumerKey, consumerSecret,
                          oauthKey = "", oauthSecret = "", httpMethod = "GET",
                          signMethod = "HMAC", nonce = genNonce(),
                          timestamp = Sys.time(),
-                         escapeFun = curlPercentEncode,
+                         escapeFun = encodeURI,
                          handshakeComplete=TRUE) {
   ## Sign an request made up of the URL, the parameters as a named character
   ## vector the consumer key and secret and the token and token secret.
   httpMethod <- toupper(httpMethod)
   signMethod <- toupper(signMethod)
-  
+
   params["oauth_nonce"] <- nonce
   params["oauth_timestamp"] <- as.integer(timestamp)
 
@@ -25,12 +25,7 @@ signRequest  <- function(url, params, consumerKey, consumerSecret,
                                              )
   params["oauth_version"] <- '1.0'
 
-  ## we escape the values of the parameters in a special way that escapes
-  ## the resulting % prefix in the escaped characters, e.g. %20 becomes
-  ## %2520 as %25 is the escape for %
-  params <- params[order(names(params))]
-  args <- paste(names(params), sapply(params, escapeFun, post.amp = TRUE),
-                sep = "%3D", collapse = "%26")  
+  args <- escapeFun(normalizeParams(params, escapeFun), post.amp = TRUE)
 
   if(is.null(oauthSecret))
      oauthSecret <- ""
@@ -43,13 +38,9 @@ signRequest  <- function(url, params, consumerKey, consumerSecret,
 
   sig <- signString(odat, okey, signMethod)
 
-  ## Only perform the percent encode post-handshake when POSTing
-  if ((httpMethod == "POST") && (handshakeComplete)){
-    sig <- curlPercentEncode(sig)
-  }
   params["oauth_signature"] <- sig
   ##
-  return(params[grepl("^oauth_", names(params))])
+  return(params)
 }
 
 signString <- function(str, key, method) {
@@ -103,4 +94,36 @@ signWithRSA <- function(key, data) {
 
 signWithPlaintext <- function(key, data) {
   key
+}
+
+## this function is derived from utils::URLencode
+## Characters not in the unreserved character set ([RFC3986] section 2.3) MUST be encoded
+##   unreserved = ALPHA, DIGIT, '-', '.', '_', '~'
+## cf. http://oauth.net/core/1.0/#encoding_parameters
+encodeURI <- function(URI, ...) {
+  if (!is.character(URI)) {
+    URI
+  } else {
+    OK <- "[^-A-Za-z0-9_.~]"
+    x <- strsplit(URI, "")[[1L]]
+    z <- grep(OK, x)
+    if (length(z)) {
+      y <- sapply(x[z], function(x) paste("%", toupper(as.character(charToRaw(x))),
+                                          sep = "", collapse = ""))
+      x[z] <- y
+    }
+      paste(x, collapse = "")
+  }
+}
+
+## cf. http://tools.ietf.org/html/rfc5849#section-3.4.1.3.2
+normalizeParams <- function(params, escapeFun) {
+  ## we escape the values of the parameters in a special way that escapes
+  ## the resulting % prefix in the escaped characters, e.g. %20 becomes
+  ## %2520 as %25 is the escape for %
+  names(params) <- sapply(names(params), escapeFun, post.amp = TRUE)
+  params <- sapply(params, escapeFun, post.amp = TRUE)
+  ## If two or more parameters share the same name, they are sorted by their value.
+  params <- params[order(names(params), params)]
+  return(paste(names(params), params, sep = "=", collapse = "&"))
 }
